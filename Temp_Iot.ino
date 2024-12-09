@@ -5,7 +5,7 @@
 
 // Wi-Fi credentials
 const char* ssid = "KeralaStartupMission_2G";       // Replace with your Wi-Fi SSID
-const char* password = "Your_Password"; // Replace with your Wi-Fi password
+const char* password = "K$um$t@6tupM$n"; // Replace with your Wi-Fi password
 
 // DS18B20 configuration
 #define ONE_WIRE_BUS 4 // GPIO 4 for DS18B20 data pin
