@@ -7,6 +7,8 @@
 const char* ssid = "KeralaStartupMission_2G";       // Replace with your Wi-Fi SSID
 const char* password = "K$um$t@6tupM$n"; // Replace with your Wi-Fi password
 
+const char* location = "Thejaswini Ground Floor";
+
 // DS18B20 configuration
 #define ONE_WIRE_BUS 4 // GPIO 4 for DS18B20 data pin
 OneWire oneWire(ONE_WIRE_BUS);
@@ -17,6 +19,37 @@ const char* serverURL = "https://api.startupmission.in/webhook/temp-sensor"; // 
 
 // Built-in LED
 #define WIFI_LED 2 // GPIO 2 for built-in LED
+
+float BASE_TEMP = 0;
+
+void sendToApi(float temperatureC){
+
+  // Send temperature data to the remote server
+  HTTPClient http;
+  http.begin(serverURL);
+  http.addHeader("Content-Type", "application/json");
+
+  // Prepare JSON payload
+  String payload = "{\"temperature\": " + String(temperatureC) + ", \"location\": \"" + String(location) + "\"}";
+
+  // POST the data
+  int httpResponseCode = http.POST(payload);
+
+  // Print the response
+  if (httpResponseCode > 0) {
+    Serial.print("HTTP Response Code: ");
+    Serial.println(httpResponseCode);
+    Serial.println("Server Response: ");
+    Serial.println(http.getString());
+  } else {
+    Serial.print("Error on sending POST: ");
+    Serial.println(http.errorToString(httpResponseCode).c_str());
+  }
+
+  // End the HTTP connection
+  http.end();
+
+}
 
 void setup() {
   // Start serial communication
@@ -42,6 +75,13 @@ void setup() {
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
   digitalWrite(WIFI_LED, HIGH); // LED on when connected
+
+  // Request temperature readings
+  sensors.requestTemperatures();
+  float temperatureC = sensors.getTempCByIndex(0);
+
+  BASE_TEMP = temperatureC;
+
 }
 
 void loop() {
@@ -53,35 +93,23 @@ void loop() {
     sensors.requestTemperatures();
     float temperatureC = sensors.getTempCByIndex(0);
 
+    float temp_diff = abs(BASE_TEMP - temperatureC);
+
     // Print temperature to Serial Monitor
     Serial.print("Temperature: ");
     Serial.print(temperatureC);
     Serial.println(" °C");
 
-    // Send temperature data to the remote server
-    HTTPClient http;
-    http.begin(serverURL);
-    http.addHeader("Content-Type", "application/json");
+    Serial.print("Difference: ");
+    Serial.print(temp_diff);
+    Serial.println(" °C");
 
-    // Prepare JSON payload
-    String payload = "{\"temperature\": " + String(temperatureC) + "}";
-
-    // POST the data
-    int httpResponseCode = http.POST(payload);
-
-    // Print the response
-    if (httpResponseCode > 0) {
-      Serial.print("HTTP Response Code: ");
-      Serial.println(httpResponseCode);
-      Serial.println("Server Response: ");
-      Serial.println(http.getString());
-    } else {
-      Serial.print("Error on sending POST: ");
-      Serial.println(http.errorToString(httpResponseCode).c_str());
+    if(temp_diff >= 1){
+      sendToApi(temperatureC);
+      BASE_TEMP = temperatureC;
     }
 
-    // End the HTTP connection
-    http.end();
+    
   } else {
     digitalWrite(WIFI_LED, LOW); // Turn LED off if disconnected
     Serial.println("Wi-Fi disconnected! Attempting to reconnect...");
@@ -93,5 +121,7 @@ void loop() {
     Serial.println("\nWi-Fi reconnected!");
   }
 
-  delay(60000); // Wait 60 seconds before next reading
+  delay(10000); // Wait 10 seconds before next reading
+
 }
+
